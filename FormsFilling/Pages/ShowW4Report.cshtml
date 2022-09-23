@@ -1,0 +1,59 @@
+﻿@page
+@model FormFilling.Pages.Administration.Company.Reports.ShowW4ReportModel
+@{
+}
+
+
+<input type="hidden" id="APIKeyField" asp-for="APIKey" />
+
+     <div asp-validation-summary="All" class="text-danger"></div>
+
+<div id="selectEmployee">
+
+            <div class="form-group">
+                <label class="control-label">Employees who have W4's on file</label>
+                <select id="ddlEmployeeState" asp-for="WhoToShow" asp-items="@(new SelectList(Model.SelectablePeople, "Value", "Text"))" class="form-control" onchange="    displayReport(this.value);">
+                    <option value=" ">Please select the W4 to show</option>
+                </select>
+                <span asp-validation-for="WhoToShow" class="text-danger"></span>
+            </div>
+
+</div>
+
+    <p>
+        <div id="printableLinks">
+        
+        </div>
+
+        <div id="displayPages" style="max-width:100%">
+
+        </div>
+        </p>
+
+@section scripts {
+     <script type="text/javascript">
+
+
+
+function displayReport(emp) {
+    var APIKeyField = document.getElementById('APIKeyField');
+    var APIKey = APIKeyField.value;
+    var images = document.getElementById('displayPages');
+    images.innerHTML = '        <img id="w4page" src="/api/W4_2022/GetW4?APIKey='+APIKey+'&EmployeeNumber='+emp+'" style="max-width:100%"  /> ';
+
+    var links = document.getElementById('printableLinks');
+    links.innerHTML = '        <a href="" onclick="    printW4page();">Printable page</a>'  + 'Select no margins in print options';
+}
+
+
+function printW4page() {
+    var pageId = document.getElementById('w4page')
+    var pagesrc = pageId.src;
+
+    var newwindow = window.open(pagesrc, 'printwindow', 'titlebar=no,menubar=no,status=no');
+    newwindow.window.print();
+    //newwindow.close();
+};
+
+     </script>
+}

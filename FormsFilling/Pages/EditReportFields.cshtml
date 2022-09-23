@@ -1,0 +1,535 @@
+﻿@page
+@model FormFilling.Pages.EditReportFieldsModel
+@{
+}
+
+<input type="hidden" id="APIKeyField" asp-for="APIKey" />
+
+<div id="reportSelect">
+    <label>Select a report to edit</label>
+    <div id="reportList">
+
+    </div>
+</div>
+
+<div class="row">
+    <div id="fieldSelect">
+        <label>Select a field to position</label>
+        <div id="fieldList">
+        </div>
+    </div>
+
+</div>
+<div class="row">
+    <div class="col-md-3">
+        <div class="panel panel-primary" style="border: 2px solid black">
+            <div class="panel-header">
+                Field Edit
+            </div>
+            <div class="panel-body">
+                <label>Field Name</label>
+                <input id="panelFieldName" type="text" readonly />
+                <br />
+                <label>x position</label>
+                <input id="panelXPosition" type="number" onchange="    updateMovingFieldX(this.value);" />
+                <br />
+                <label>y position</label>
+                <input id="panelYPosition" type="number" onchange="    updateMovingFieldY(this.value);" />
+                <br />
+                <label>length</label>
+                <input id="panelLength" type="number" step="10" onchange="    setFieldLength(this.value);" />
+                <br />
+                <label>height</label>
+                <input id="panelHeight" type="number" step="10" onchange="    setFieldHeight(this.value);" />
+                <br />
+                <label>Field type</label>
+                <select id="fieldTypeSelect">
+                    <option value=" ">Select field type</option>
+                    <option value="text">Text Field</option>
+                    <option value="imag">Image field</option>
+                    <option value="bas6">Base 64 Image field</option>
+                </select>
+                <br />
+                <input type="button" value="Save field information" onclick="    handleUpdateButton();" />
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="panel panel-primary" style="border: 2px solid black">
+            <div class="panel-header">
+                Field Edit
+            </div>
+            <div id="fontSelect">
+                <label>Select a font for this report</label>
+                <div id="fontList">
+                </div>
+                <br />
+                <label>Font Size</label>
+                <input id="fontSize" type="number" />
+                <br />
+                <label>Bold</label>
+                <input id="boldCheckbox" type="checkbox" />
+                <br />
+                <label>Italic</label>
+                <input id="italicCheckbox" type="checkbox" />
+                <br />
+                <input type="button" value="Set Font" onclick="    updateServerFont();" />
+            </div>
+        </div>
+    </div>
+</div>
+
+    <p>
+        <div id="BackgroundImage" style="position: relative">
+            <div id="reportImage">
+                
+            </div>
+
+        <div id="fieldtomove" style="position:absolute; top:0; left:0; width:200px; background-color: coral;" draggable="true" ondragstart="return false;">
+            Test Field
+        </div>
+        </div>
+        </p>
+
+@section scripts {
+     <script type="text/javascript">
+    
+var formName = 'I9';
+var whereToLook = document.getElementById('BackgroundImage');
+var initialX;
+var initialY;
+var fieldStartX;
+var fieldStartY;
+var fieldEndX;
+var fieldEndY;
+var fieldIncrementX;
+var fieldIncrementY;
+var moveStartX;
+var moveStartY;
+// current field position
+var currentFieldX;
+var currentFieldY;
+// last field updated
+var currentField =
+    {
+        Name: 'unknown',
+        X: 0,
+        Y: 0,
+        fieldLength: 200,
+        fieldHeight: 40
+    }
+
+var reports = {};
+var fields = {};
+var fieldNames = {};
+var fontNames = {};
+
+
+function getAllReports() {
+    // ask the server
+    var URL = "/api/FormEdit/GetAllReports";
+
+    $.get(URL)
+        .done(function(data, status, jqXHR ){
+            reports = data.slice();
+            buildReportSelection(reports);
+        }
+        )
+        .fail(function( jqXHR, textStatus, errorThrown ) {
+        console.log(jqXHR);
+        console.log(textStatus);
+        console.log(errorThrown );
+        }
+        );
+}
+
+
+function getFieldNames(formName) {
+    // ask the server
+    var URL = "/api/FormEdit/GetFieldNames?FormName="+formName;
+
+    $.get(URL)
+        .done(function(data, status, jqXHR ){
+            fieldNames = data.slice();
+            buildFieldSelection(fieldNames);
+        }
+        )
+        .fail(function( jqXHR, textStatus, errorThrown ) {
+        console.log(jqXHR);
+        console.log(textStatus);
+        console.log(errorThrown );
+        }
+        );
+}
+
+function getAllFields(formName) {
+    // ask the server
+    var URL = "/api/FormEdit/GetAllFields?FormName="+formName;
+
+    $.get(URL)
+        .done(function(data, status, jqXHR ){
+            fields = data.slice();
+        }
+        )
+        .fail(function( jqXHR, textStatus, errorThrown ) {
+        console.log(jqXHR);
+        console.log(textStatus);
+        console.log(errorThrown );
+        }
+        );
+}
+
+function getAllFonts() {
+    // ask the server
+    var URL = "/api/FormEdit/GetAllFonts";
+
+    $.get(URL)
+        .done(function(data, status, jqXHR ){
+            fontNames = data.slice();
+            buildFontSelection(fontNames);
+        }
+        )
+        .fail(function( jqXHR, textStatus, errorThrown ) {
+        console.log(jqXHR);
+        console.log(textStatus);
+        console.log(errorThrown );
+        }
+        );
+}
+
+function getFormFont(formName) {
+    // ask the server
+    var URL = "/api/FormEdit/GetReportFont?FormName="+formName;
+
+    $.get(URL)
+        .done(function(data, status, jqXHR ){
+            // load form with this information
+            loadFontValues(data);
+        }
+        )
+        .fail(function( jqXHR, textStatus, errorThrown ) {
+        console.log(jqXHR);
+        console.log(textStatus);
+        console.log(errorThrown );
+        }
+        );
+}
+
+
+addInitialEvents = function() {
+    initialX = 0;
+    initialY = 0;
+    var movingField = document.getElementById('fieldtomove');
+    movingField.addEventListener('mousedown', startMovingField, false);
+    window.addEventListener('mouseup', mouseUp, false);
+    window.addEventListener("keydown", handleKeyEvent, false);
+}
+
+
+function mouseUp() {
+    window.removeEventListener('mousemove', moveTheField, true);
+}
+
+startMovingField = function(event) {
+
+    moveStartX = event.clientX;
+    moveStartY = event.clientY;
+
+    var movingField = document.getElementById('fieldtomove');
+
+    //The following block gets the X offset (the difference between where it starts and where it was clicked)
+    let leftPart = "";
+    if(!movingField.style.left)
+        leftPart+="0px";    //In case this was not defined as 0px explicitly.
+    else
+        leftPart = movingField.style.left;
+    let leftPos = leftPart.indexOf("px");
+    let leftNumString = leftPart.slice(0, leftPos); // Get the X value of the object.
+    fieldIncrementX = moveStartX - parseInt(leftNumString,10);
+
+    //The following block gets the Y offset (the difference between where it starts and where it was clicked)
+    let topPart = "";
+    if(!movingField.style.top)
+        topPart+="0px";     //In case this was not defined as 0px explicitly.
+    else
+        topPart = movingField.style.top;
+    let topPos = topPart.indexOf("px");
+    let topNumString = topPart.slice(0, topPos);    // Get the Y value of the object.
+    fieldIncrementY = moveStartY - parseInt(topNumString,10);
+
+    window.addEventListener('mousemove', moveTheField, true);
+}
+
+function moveTheField(event){
+    var movingField = document.getElementById('fieldtomove');
+    movingField.style.position = 'absolute';
+    currentFieldX = event.clientX - fieldIncrementX;
+    movingField.style.left = currentFieldX + 'px';
+    currentFieldY = event.clientY - fieldIncrementY;
+    movingField.style.top = currentFieldY + 'px';
+    updatePanelPosition(currentFieldX, currentFieldY);
+}
+
+function handleKeyEvent(event) {
+    if (event.key == 's') {
+        setStartOfField();
+    }
+    if (event.key == 'e') {
+        setEndOfField();
+        updateServerPositions();
+    }
+    if (event.key == 'k') { currentField.fieldLength -= 10; setFieldLength(currentField.fieldLength); updatePanelLength(currentField.fieldLength); }
+    if (event.key == 'l') { currentField.fieldLength += 10; setFieldLength(currentField.fieldLength); updatePanelLength(currentField.fieldLength); }
+
+}
+
+function updateMovingFieldX(x) {
+    var movingField = document.getElementById('fieldtomove');
+    currentFieldX = x;
+    movingField.style.left = currentFieldX + 'px';
+}
+function updateMovingFieldY(y) {
+    var movingField = document.getElementById('fieldtomove');
+    currentFieldY = y;
+    movingField.style.top = currentFieldY + 'px';
+}
+
+function setFieldLength (l) {
+    var movingField = document.getElementById('fieldtomove');
+    movingField.style.width = l + 'px';
+}
+function setFieldHeight (h) {
+    currentField.fieldHeight = h;
+    var movingField = document.getElementById('fieldtomove');
+    movingField.style.height = h + 'px';
+}
+
+function setFieldName(newName) {
+    var movingField = document.getElementById('fieldtomove');
+    movingField.innerHTML = newName;
+}
+
+setStartOfField = function() {
+    if (initialX == 0) initialX = currentFieldX;
+    if (initialY == 0) initialY = currentFieldY;
+
+    fieldStartX = currentFieldX;
+    fieldStartY = currentFieldY;
+}
+setEndOfField = function() {
+    fieldEndX = currentFieldX;
+    fieldEndY = currentFieldY;
+};
+
+function resetMovingField(x,y,l) {
+    var movingField = document.getElementById('fieldtomove');
+    movingField.style.position = 'absolute';
+    currentFieldX = x;
+    movingField.style.left = currentFieldX + 'px';
+    currentFieldY = y;
+    movingField.style.top = currentFieldY + 'px';
+    setFieldLength (l)
+};
+
+function handleUpdateButton() {
+    updateServerPositions();
+}
+
+
+updateServerPositions = function() {
+    // tell the server
+    var URL = "/api/FormEdit/UpdatePosition";
+    currentField.X = currentFieldX;
+    currentField.Y = currentFieldY;
+    var DataToSend =
+    {
+        currentFieldX,
+        currentFieldY
+    };
+    var APIKeyField = document.getElementById('APIKeyField');
+    DataToSend.APIKey = APIKeyField.value;
+    DataToSend.formName = formName;
+    DataToSend.fieldName = currentField.Name;
+    DataToSend.length = currentField.fieldLength;
+    DataToSend.height = currentField.fieldHeight;
+    var fieldTypeField = document.getElementById('fieldTypeSelect');
+    DataToSend.fieldType = fieldTypeField.value;
+    if(fieldTypeField.value == ' '){alert("Please select a field type"); return;}
+    $.post(URL, DataToSend)
+       .done(
+        function(data, status) {
+            alert('Updated');
+            resetMovingField(initialX, initialY, 400);
+        })
+        .fail(function( jqXHR, textStatus, errorThrown ) {
+        console.log(jqXHR);
+        console.log(textStatus);
+        console.log(errorThrown );
+        }
+        );
+};
+
+
+function updateServerFont() {
+    // tell the server
+    var URL = "/api/FormEdit/UpdateFont";
+    var boldChecked = document.getElementById('boldCheckbox').checked;
+    var italicChecked = document.getElementById('italicCheckbox').checked;
+    var DataToSend =
+    {
+        boldChecked,
+        italicChecked
+    };
+    DataToSend.formName = formName;
+    DataToSend.fontName = document.getElementById('selFnt').value;
+    DataToSend.fontSize = document.getElementById('fontSize').value
+    $.post(URL, DataToSend)
+       .done(
+        function(data, status) {
+            alert('Font Updated');
+        })
+        .fail(function( jqXHR, textStatus, errorThrown ) {
+            alert(textStatus);
+            alert(errorThrown);
+        console.log(jqXHR);
+        }
+        );
+};
+
+
+
+
+
+function buildReportSelection(rpts) {
+    var whereToPutList = document.getElementById('reportList');
+    var reportSelect = '<option>Select a report</option>';
+    for (let i = 0; i < rpts.length; i++)
+        reportSelect = reportSelect + '<option>' + rpts[i] + '</option>';
+    whereToPutList.innerHTML = '<select id="selRpt" name="selectedReport"  onchange="handleReportSelection(this)">' + reportSelect + '</select>';
+};
+
+function handleReportSelection(reportlist) {
+    var whichSelection = document.getElementById("selRpt");
+    formName = whichSelection.options[whichSelection.selectedIndex].text;
+    getFieldNames(formName);
+    getAllFields(formName);
+    getFormFont(formName);
+    buildBackgroundImage(formName);
+};
+
+
+
+
+function buildBackgroundImage(rpt) {
+    var whereToPutImage = document.getElementById('reportImage');
+    whereToPutImage.innerHTML = '<img src="/api/FormEdit/GetImage?FormName=' + rpt + '" />';
+}
+
+
+function buildFieldSelection(flds) {
+    var whereToPutList = document.getElementById('fieldList');
+    var fieldSelect = '<option value="">Select a field to position</option>';
+    for (let i = 0; i < flds.length; i++)
+        fieldSelect = fieldSelect + '<option>' + flds[i] + '</option>';
+    whereToPutList.innerHTML = '<select id="selFld" name="selectedField"  onchange="handleFieldSelection(this)">' + fieldSelect + '</select>';
+};
+
+function handleFieldSelection(fieldlist) {
+    var whichSelection = document.getElementById("selFld");
+    var selectedField = whichSelection.options[whichSelection.selectedIndex].text;
+    currentField.Name = selectedField;
+    setFieldName(selectedField);
+    var curfld = findThisField(selectedField);
+    if (curfld) {
+        loadPanelValues(curfld);
+        currentField.X = curfld.xposition;
+        currentField.Y = curfld.yposition;
+        currentField.fieldLength = curfld.length;
+        resetMovingField(curfld.xposition, curfld.yposition, curfld.length);
+    }else {
+        var nullfld = {
+            fieldName:selectedField,
+            xposition:currentField.X+10,
+            yposition:currentField.Y,
+            length: currentField.fieldLength,
+            height:0
+        };
+        loadPanelValues(nullfld);
+        resetMovingField(nullfld.xposition, nullfld.yposition, nullfld.length);
+    }
+};
+
+
+function findThisField(fld) {
+    for (let i = 0; i < fields.length; i++) { 
+        if (fields[i].fieldName == fld)
+            return fields[i];
+    }
+    return null;
+};
+
+function buildFontSelection(fnts) {
+    var whereToPutList = document.getElementById('fontList');
+    var fontSelect = '';
+    for (let i = 0; i < fnts.length; i++)
+        fontSelect = fontSelect + '<option>' + fnts[i] + '</option>';
+    whereToPutList.innerHTML = '<select id="selFnt" name="selectedFont">' + fontSelect + '</select>';
+};
+
+
+
+function loadFontValues(fnt) {
+    if (fnt) {
+        var panelFontName = document.getElementById("selFnt");
+        panelFontName.value = fnt.fontName;
+        var panelfontSize = document.getElementById("fontSize");
+        panelfontSize.value = fnt.fontSize;
+        var panelfontBold = document.getElementById("boldCheckbox");
+        panelfontBold.checked = fnt.boldChecked;
+        var panelfontItalic = document.getElementById("italicCheckbox");
+        panelfontItalic.checked = fnt.italicChecked;
+    }
+};
+
+function loadPanelValues(fld) {
+    if (fld) {
+        var panelinput = document.getElementById("panelFieldName");
+        panelinput.value = fld.fieldName;
+        var panelx = document.getElementById("panelXPosition");
+        panelx.value = fld.xposition;
+        var panely = document.getElementById("panelYPosition");
+        panely.value = fld.yposition;
+        var panell = document.getElementById("panelLength");
+        panell.value = fld.length;
+        var panelH = document.getElementById("panelHeight");
+        panelH.value = fld.height;
+        var paneltype = document.getElementById("fieldTypeSelect");
+        if (fld.fieldType)
+            paneltype.value = fld.fieldType;
+    }
+}
+
+function updatePanelPosition(x, y) {
+        var panelx = document.getElementById("panelXPosition");
+        panelx.value = x;
+        var panely = document.getElementById("panelYPosition");
+        panely.value = y;
+}
+
+function updatePanelLength(l) {
+        var panell = document.getElementById("panelLength");
+        panell.value = l;
+}
+function updatePanelHeight(h) {
+        var panelH = document.getElementById("panelHeight");
+        panelH.value = h;
+}
+
+
+addInitialEvents();
+getAllReports();
+getAllFonts();
+
+     </script>
+}

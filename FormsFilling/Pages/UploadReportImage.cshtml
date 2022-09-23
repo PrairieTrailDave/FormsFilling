@@ -1,0 +1,67 @@
+﻿@page
+@model FormFilling.Pages.Administration.Platform.ReportSupport.UploadReportImageModel
+@{
+        ViewData["Title"] = "ReportImageUpload";
+}
+
+
+<h1>Report Image Upload</h1>
+
+<h4>AppFile</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form method="post" enctype="multipart/form-data">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="form-group">
+                <label asp-for="ImageCode" class="control-label"></label>
+                <input asp-for="ImageCode" class="form-control" />
+                <span asp-validation-for="ImageCode" class="text-danger"></span>
+            </div> 
+
+            <div class="form-group">
+                <label asp-for="Width" class="control-label"></label>
+                <input asp-for="Width" class="form-control" />
+                <span asp-validation-for="Width" class="text-danger"></span>
+            </div> 
+
+            <div class="form-group">
+                <label asp-for="Height" class="control-label"></label>
+                <input asp-for="Height" class="form-control" />
+                <span asp-validation-for="Height" class="text-danger"></span>
+            </div> 
+
+
+
+            <div class="form-group">
+                <label asp-for="ImageType" class="control-label"></label>
+                <select id="ddlEmployeeState" asp-for="ImageType"  class="form-control">
+                    <option value=" ">Please select the Image Type</option>
+                    <option value="image/bmp">Bitmap</option>
+                    <option value="image/jpg">JPEG</option>
+                    <option value="image/png">PNG</option>
+                </select>
+                <span asp-validation-for="ImageType" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="FileContainingImage" class="control-label"></label>
+                <input asp-for="FileContainingImage" class="form-control" type="file" />
+                <span asp-validation-for="FileContainingImage" class="text-danger"></span>
+            </div> 
+            <div class="form-group">
+                <input type="submit" value="Upload" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-page="Index">Back to List</a>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+
